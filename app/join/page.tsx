@@ -1,83 +1,62 @@
-"use client";
-import { FormEvent, useState } from "react";
-import ProgressBar from "@/components/ProgressBar";
+import { NextRequest, NextResponse } from "next/server";
+import clientPromise from "@/lib/mongodb";
 
-export default function JoinPage() {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [status, setStatus] = useState<"idle" | "success" | "error">(
-    "idle"
-  );
-  const [message, setMessage] = useState<string>("");
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setStatus("idle");
-    setMessage("");
-    try {
-      const res = await fetch("/api/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus("error");
-        setMessage(data.error || "Error signing up");
-      } else {
-        setStatus("success");
-        setMessage("You have entered the dojo. Welcome!");
-        setEmail("");
-        setUsername("");
-      }
-    } catch (err) {
-      setStatus("error");
-      setMessage("Network error");
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const username =
+      typeof body.username === "string" ? body.username.trim() : "";
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      );
     }
-  }
 
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-md">
-      <h1 className="text-3xl font-bold mb-4">Join the Dojo</h1>
-      <p className="mb-4 text-gray-300">
-        Enter your email to join the waitlist. We will notify you when the gates
-        open.
-      </p>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block mb-1">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-3 py-2 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-green-500"
-            placeholder="you@example.com"
-          />
-        </div>
-        <div>
-          <label className="block mb-1">Username (optional)</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-3 py-2 rounded bg-gray-800 border border-gray-700 focus:outline-none focus:border-green-500"
-            placeholder="SenseiName"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full py-2 bg-green-600 hover:bg-green-500 rounded text-white font-semibold"
-        >
-          Join Waitlist
-        </button>
-      </form>
-      {status !== "idle" && (
-        <p className={`mt-4 ${status === "success" ? "text-green-400" : "text-red-400"}`}>
-          {message}
-        </p>
-      )}
-      <ProgressBar />
-    </div>
-  );
+    if (!isValidEmail(email)) {
+      return NextResponse.json(
+        { error: "Please enter a valid email address" },
+        { status: 400 }
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db();
+    const collection = db.collection("joins");
+
+    const existing = await collection.findOne({ email });
+
+    if (existing) {
+      return NextResponse.json(
+        { success: true, message: "You are already on the waitlist." },
+        { status: 200 }
+      );
+    }
+
+    await collection.insertOne({
+      email,
+      username: username || null,
+      createdAt: new Date(),
+    });
+
+    return NextResponse.json(
+      { success: true, message: "You have entered the dojo. Welcome!" },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Join route error:", error);
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
