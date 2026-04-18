@@ -1,26 +1,35 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
-export default function ProgressBar() {
+export default function ProgressBar({ refreshKey = 0 }: { refreshKey?: number }) {
   const [count, setCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
   async function fetchCount() {
     try {
-      const res = await fetch("/api/count");
+      const res = await fetch("/api/progress", {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
         setCount(data.count ?? 0);
       }
-    } catch (err) {
-      // ignore
+    } catch {
+      setCount(0);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     fetchCount();
-    const interval = setInterval(fetchCount, 30000);
+
+    const interval = setInterval(fetchCount, 15000); // refresh every 15s
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshKey]);
 
   const percent = Math.min((count / 100) * 100, 100);
 
@@ -28,11 +37,14 @@ export default function ProgressBar() {
     <div className="w-full max-w-md mx-auto my-6">
       <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
         <div
-          className="h-3 bg-green-500 rounded-full transition-all duration-500"
+          className="h-3 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full transition-all duration-700"
           style={{ width: `${percent}%` }}
-        ></div>
+        />
       </div>
-      <div className="text-center text-sm mt-1">{count} / 100 initiates</div>
+
+      <div className="text-center text-sm mt-2 text-gray-300">
+        {loading ? "Loading..." : `${count} / 100 initiates`}
+      </div>
     </div>
   );
 }
