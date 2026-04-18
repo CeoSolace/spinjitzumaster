@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import EarlyUser from "@/models/EarlyUser";
+import clientPromise from "@/lib/mongodb";
 
 export async function GET() {
   try {
-    await connectDB();
-    const count = await EarlyUser.countDocuments();
-    return NextResponse.json({ count }, { status: 200 });
-  } catch (err) {
-    console.error(err);
+    const client = await clientPromise;
+    const db = client.db();
+
+    const count = await db.collection("joins").countDocuments();
+
+    return NextResponse.json({
+      count,
+    });
+  } catch (error) {
+    console.error("Count route error:", error);
+
     return NextResponse.json(
-      { error: "Server error" },
-      { status: 500 }
+      {
+        count: 0,
+      },
+      { status: 200 }
     );
   }
 }
