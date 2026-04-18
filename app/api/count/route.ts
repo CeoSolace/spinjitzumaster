@@ -8,17 +8,9 @@ export async function GET() {
 
     const count = await db.collection("joins").countDocuments();
 
-    return NextResponse.json({
-      count,
-    });
+    return NextResponse.json({ count });
   } catch (error) {
     console.error("Count route error:", error);
-
-    return NextResponse.json(
-      {
-        count: 0,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({ count: 0 }, { status: 200 });
   }
 }
