@@ -15,10 +15,7 @@ export async function POST(req: NextRequest) {
       typeof body.username === "string" ? body.username.trim() : "";
 
     if (!email) {
-      return NextResponse.json(
-        { error: "Email is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
     if (!isValidEmail(email)) {
@@ -53,7 +50,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("Join route error:", error);
-
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
